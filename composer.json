@@ -1,0 +1,21 @@
+{
+    "name": "vahidkaargar/jibit",
+    "description": "Jibit composer packages",
+    "keywords": ["jibit", "jibit gateway", "احراز هویت", "درگاه جیبیت"],
+    "license": ["BSD-3-Clause", "GPL-2.0-only", "GPL-3.0-only"],
+    "autoload": {
+        "psr-4": {
+            "Vahidkaargar\\Jibit\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Vahid Kaargar",
+            "homepage": "https://vahidkaargar.ir"
+        }
+    ],
+    "minimum-stability": "dev",
+    "require": {
+        "php": ">=8.0"
+    }
+}
