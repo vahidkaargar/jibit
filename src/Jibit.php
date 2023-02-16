@@ -8,10 +8,10 @@ use Exception;
 class Jibit
 {
     const BASE_URL = 'https://napi.jibit.ir/ppg/v3';
-    public mixed $accessToken;
-    private string $apiKey;
-    private string $secretKey;
-    private Cache $cache;
+    public $accessToken;
+    private $apiKey;
+    private $secretKey;
+    private $cache;
 
     public function __construct($apiKey, $secretKey)
     {
@@ -19,7 +19,6 @@ class Jibit
         $this->secretKey = $secretKey;
         $this->cache = new Cache();
     }
-
 
     /**
      * @param int $amount
@@ -32,7 +31,7 @@ class Jibit
      * @return bool|mixed|string
      * @throws Exception
      */
-    public function paymentRequest(int $amount, string $referenceNumber, string $userIdentifier, string $callbackUrl, string $currency = 'IRR', $description = null, $additionalData = null): mixed
+    public function paymentRequest($amount, $referenceNumber, $userIdentifier, $callbackUrl, $currency = 'IRR', $description = null, $additionalData = null)
     {
         $this->generateToken();
         $data = [
@@ -47,78 +46,71 @@ class Jibit
         return $this->callCurl('/purchases', $data, true);
     }
 
-
     /**
      * @param $id
      * @return bool|mixed|string
      * @throws Exception
      */
-    public function getOrderById($id): mixed
+    public function getOrderById($id)
     {
         return $this->callCurl('/purchases?purchaseId=' . $id, [], true, 0, 'GET');
 
     }
 
-
     /**
      * @param bool $isForce
-     * @return void
+     * @return string
      * @throws Exception
      */
-    private function generateToken(bool $isForce = false): void
+    private function generateToken($isForce = false)
     {
         $this->cache->eraseExpired();
 
         if ($isForce === false && $this->cache->isCached('accessToken')) {
             $this->setAccessToken($this->cache->retrieve('accessToken'));
         } else if ($this->cache->isCached('refreshToken')) {
-            if (!$this->refreshTokens()) {
+            $refreshToken = $this->refreshTokens();
+            if ($refreshToken !== 'ok') {
                 $this->generateNewToken();
             }
         } else {
             $this->generateNewToken();
         }
+        return 'unExcepted Err in generateToken.';
     }
 
-
-    /**
-     * @throws Exception
-     */
-    private function generateNewToken(): void
+    private function refreshTokens()
     {
-        $data = [
-            'apiKey' => $this->apiKey,
-            'secretKey' => $this->secretKey,
-        ];
-        $result = $this->callCurl('/tokens', $data);
-        $this->setAndCacheToken($result);
-    }
-
-
-    /**
-     * @throws Exception
-     */
-    private function refreshTokens(): bool
-    {
+        echo 'refreshing';
         $data = [
             'accessToken' => str_replace('Bearer ', '', $this->cache->retrieve('accessToken')),
             'refreshToken' => $this->cache->retrieve('refreshToken'),
         ];
-        $result = $this->callCurl('/tokens/refresh', $data);
-        return $this->setAndCacheToken($result);
+        $result = $this->callCurl('/tokens/refresh', $data, false);
+        if (empty($result['accessToken'])) {
+            return 'Err in refresh token.';
+        }
+        if (!empty($result['accessToken'])) {
+            $this->cache->store('accessToken', 'Bearer ' . $result['accessToken'], 24 * 60 * 60 - 60);
+            $this->cache->store('refreshToken', $result['refreshToken'], 48 * 60 * 60 - 60);
+            $this->setAccessToken('Bearer ' . $result['accessToken']);
+            $this->setRefreshToken($result['refreshToken']);
+            return 'ok';
+        }
+
+        return 'unExcepted Err in refreshToken.';
     }
 
-
     /**
-     * @param string $url
-     * @param array $arrayData
+     * @param $url
+     * @param $arrayData
      * @param bool $haveAuth
      * @param int $try
      * @param string $method
      * @return bool|mixed|string
      * @throws Exception
      */
-    private function callCurl(string $url, array $arrayData, bool $haveAuth = false, int $try = 0, string $method = 'POST'): mixed
+    private function callCurl($url, $arrayData, $haveAuth = false, $try = 0, $method = 'POST')
     {
         $data = $arrayData;
         $jsonData = json_encode($data);
@@ -127,7 +119,7 @@ class Jibit
             $accessToken = $this->getAccessToken();
         }
         $ch = curl_init(self::BASE_URL . $url);
-        curl_setopt($ch, CURLOPT_USERAGENT, 'github.com/vahidkaargar/jibit/');
+        curl_setopt($ch, CURLOPT_USERAGENT, 'Jibit.class Rest Api');
         curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
         curl_setopt($ch, CURLOPT_POSTFIELDS, $jsonData);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -150,7 +142,7 @@ class Jibit
         if ($haveAuth === true && $result['errors'][0]['code'] === 'security.auth_required') {
             $this->generateToken(true);
             if ($try === 0) {
-                return $this->callCurl($url, $arrayData, true, 1, $method);
+                return $this->callCurl($url, $arrayData, $haveAuth, 1, $method);
             }
 
             return 'Err in auth.';
@@ -160,52 +152,61 @@ class Jibit
 
     }
 
-
     /**
      * @return mixed
      */
-    public function getAccessToken(): mixed
+    public function getAccessToken()
     {
         return $this->accessToken;
     }
 
-
     /**
      * @param mixed $accessToken
      */
-    public function setAccessToken(mixed $accessToken): void
+    public function setAccessToken($accessToken)
     {
         $this->accessToken = $accessToken;
     }
 
+    /**
+     * @param mixed $refreshToken
+     */
+    public function setRefreshToken($refreshToken)
+    {
+        $refreshToken1 = $refreshToken;
+    }
+
+    private function generateNewToken()
+    {
+        $data = [
+            'apiKey' => $this->apiKey,
+            'secretKey' => $this->secretKey,
+        ];
+        $result = $this->callCurl('/tokens', $data);
+
+        if (empty($result['accessToken'])) {
+            return 'Err in generate new token.';
+        }
+        if (!empty($result['accessToken'])) {
+            $this->cache->store('accessToken', 'Bearer ' . $result['accessToken'], 24 * 60 * 60 - 60);
+            $this->cache->store('refreshToken', $result['refreshToken'], 48 * 60 * 60 - 60);
+            $this->setAccessToken('Bearer ' . $result['accessToken']);
+            $this->setRefreshToken($result['refreshToken']);
+            return 'ok';
+        }
+        return 'unExcepted Err in generateNewToken.';
+    }
 
     /**
      * @param $purchaseId
      * @return bool|mixed|string
      * @throws Exception
      */
-    public function paymentVerify($purchaseId): mixed
+    public function paymentVerify($purchaseId)
     {
         $this->generateToken();
         $data = [];
         return $this->callCurl('/purchases/' . $purchaseId . '/verify', $data, true, 0, 'GET');
     }
-
-
-    /**
-     * @param mixed $result
-     * @return true
-     * @throws Exception
-     */
-    private function setAndCacheToken(mixed $result): bool
-    {
-        if (!empty($result['accessToken'])) {
-            $this->cache->store('accessToken', 'Bearer ' . $result['accessToken'], 24 * 60 * 60 - 60);
-            $this->cache->store('refreshToken', $result['refreshToken'], 48 * 60 * 60 - 60);
-            $this->setAccessToken('Bearer ' . $result['accessToken']);
-            return true;
-        }
-
-        return false;
-    }
 }
+

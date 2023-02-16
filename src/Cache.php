@@ -1,8 +1,6 @@
 <?php
 
 namespace Vahidkaargar\Jibit;
-use Exception;
-use InvalidArgumentException;
 
 /**
  * cache - Light, simple and standalone PHP in-file caching class
@@ -10,52 +8,54 @@ use InvalidArgumentException;
  * @license MIT
  * @author Wruczek https://github.com/Wruczek
  */
-class Cache {
+class Cache
+{
 
     /**
      * Path to the cache directory
      * @var string
      */
-    private string $cacheDir;
+    private $cacheDir;
 
     /**
      * Cache file name
      * @var string
      */
-    private string $cacheFilename;
+    private $cacheFilename;
 
     /**
      * Cache file name, hashed with sha1. Used as an actual file name
      * @var string
      */
-    private string $cacheFilenameHashed;
+    private $cacheFilenameHashed;
 
     /**
      * Cache file extension
      * @var string
      */
-    private string $cacheFileExtension;
+    private $cacheFileExtension;
 
     /**
      * Holds current cache
      * @var array
      */
-    private array $cacheArray;
+    private $cacheArray;
 
     /**
      * If true, cache expire after one second
      * @var bool
      */
-    private bool $devMode;
+    private $devMode;
 
     /**
      * Cache constructor.
      * @param string $cacheDirPath cache directory. Must end with "/"
      * @param string $cacheFileName cache file name
      * @param string $cacheFileExtension cache file extension. Must end with .php
-     * @throws Exception if there is a problem loading the cache
+     * @throws \Exception if there is a problem loading the cache
      */
-    public function __construct(string $cacheDirPath = "cache/", string $cacheFileName = "defaultCache", string $cacheFileExtension = ".Cache.php") {
+    public function __construct($cacheDirPath = "cache/", $cacheFileName = "default.cache", $cacheFileExtension = ".cache.php")
+    {
         $this->setCacheFilename($cacheFileName);
         $this->setCacheDir($cacheDirPath);
         $this->setCacheFileExtension($cacheFileExtension);
@@ -67,16 +67,16 @@ class Cache {
     /**
      * Loads cache
      * @return array array filled with data
-     * @throws Exception if there is a problem loading the cache
+     * @throws \Exception if there is a problem loading the cache
      */
-    private function loadCacheFile(): array
+    private function loadCacheFile()
     {
         $filepath = $this->getCacheFilePath();
         $file = @file_get_contents($filepath);
 
         if (!$file) {
             unlink($filepath);
-            throw new Exception("Cannot load cache file! ({$this->getCacheFilename()})");
+            throw new \Exception("Cannot load cache file! ({$this->getCacheFilename()})");
         }
 
         // Remove the first line which prevents direct access to the file
@@ -85,12 +85,12 @@ class Cache {
 
         if ($data === false) {
             unlink($filepath);
-            throw new Exception("Cannot deserialize cache file, cache file deleted. ({$this->getCacheFilename()})");
+            throw new \Exception("Cannot deserialize cache file, cache file deleted. ({$this->getCacheFilename()})");
         }
 
         if (!isset($data["hash-sum"])) {
             unlink($filepath);
-            throw new Exception("No hash found in cache file, cache file deleted");
+            throw new \Exception("No hash found in cache file, cache file deleted");
         }
 
         $hash = $data["hash-sum"];
@@ -98,7 +98,7 @@ class Cache {
 
         if ($hash !== $this->getStringHash(serialize($data))) {
             unlink($filepath);
-            throw new Exception("Cache data miss-hashed, cache file deleted");
+            throw new \Exception("Cache data miss-hashed, cache file deleted");
         }
 
         return $data;
@@ -106,10 +106,10 @@ class Cache {
 
     /**
      * Saves current cacheArray into the cache file
-     * @return void
-     * @throws Exception if the file cannot be saved
+     * @return $this
+     * @throws \Exception if the file cannot be saved
      */
-    private function saveCacheFile(): void
+    private function saveCacheFile()
     {
         if (!file_exists($this->getCacheDir()))
             @mkdir($this->getCacheDir());
@@ -121,8 +121,9 @@ class Cache {
         $success = file_put_contents($this->getCacheFilePath(), $firstLine . $data) !== false;
 
         if (!$success)
-            throw new Exception("Cannot save cache");
+            throw new \Exception("Cannot save cache");
 
+        return $this;
     }
 
     /**
@@ -133,10 +134,13 @@ class Cache {
      * @param $expiration int number of seconds before the $key expires
      * @param $permanent bool if true, this item will not be automatically cleared after expiring
      * @return $this
-     * @throws Exception if the file cannot be saved
+     * @throws \Exception if the file cannot be saved
      */
-    public function store(string $key, mixed $data, int $expiration = 60, bool $permanent = false): static
+    public function store($key, $data, $expiration = 60, $permanent = false)
     {
+        if (!is_string($key)) {
+            throw new \InvalidArgumentException('$key must be a string, got type "' . get_class($key) . '" instead');
+        }
 
         if ($this->isDevMode())
             $expiration = 1;
@@ -158,9 +162,9 @@ class Cache {
      * @param $key string
      * @param bool $meta if true, array will be returned containing metadata alongside data itself
      * @return mixed|null returns data if $key is valid and not expired, NULL otherwise
-     * @throws Exception if the file cannot be saved
+     * @throws \Exception if the file cannot be saved
      */
-    public function retrieve(string $key, bool $meta = false): mixed
+    public function retrieve($key, $meta = false)
     {
         $this->eraseExpired();
 
@@ -191,14 +195,14 @@ class Cache {
      * }, 10);
      * </code>
      *
-     * @param string $key
+     * @param $key
      * @param $refreshCallback Callback called when data needs to be refreshed. Should return data to be cached.
      * @param int $cacheTime Cache time. Defaults to 60
      * @param bool $meta If true, returns data with meta. @see retrieve
      * @return mixed|null Data currently stored under key
-     * @throws Exception if the file cannot be saved
+     * @throws \Exception if the file cannot be saved
      */
-    public function refreshIfExpired(string $key, callable $refreshCallback, int $cacheTime = 60, bool $meta = false): mixed
+    public function refreshIfExpired($key, $refreshCallback, $cacheTime = 60, $meta = false)
     {
         if ($this->isExpired($key)) {
             $this->store($key, $refreshCallback(), $cacheTime);
@@ -211,9 +215,9 @@ class Cache {
      * Erases data associated with $key
      * @param $key string
      * @return bool true if $key was found and removed, false otherwise
-     * @throws Exception if the file cannot be saved
+     * @throws \Exception if the file cannot be saved
      */
-    public function eraseKey(string $key): bool
+    public function eraseKey($key)
     {
         if (!$this->isCached($key, false)) {
             return false;
@@ -227,9 +231,9 @@ class Cache {
     /**
      * Erases expired keys from cache
      * @return int number of erased entries
-     * @throws Exception if the file cannot be saved
+     * @throws \Exception if the file cannot be saved
      */
-    public function eraseExpired(): int
+    public function eraseExpired()
     {
         $counter = 0;
 
@@ -248,9 +252,9 @@ class Cache {
 
     /**
      * Clears the cache
-     * @throws Exception if the file cannot be saved
+     * @throws \Exception if the file cannot be saved
      */
-    public function clearCache(): void
+    public function clearCache()
     {
         $this->cacheArray = [];
         $this->saveCacheFile();
@@ -258,13 +262,13 @@ class Cache {
 
     /**
      * Checks if $key has expired
-     * @param string $key
+     * @param $key
      * @param bool $eraseExpired if true, expired data will
      * be cleared before running this function
      * @return bool
-     * @throws Exception if the file cannot be saved
+     * @throws \Exception if the file cannot be saved
      */
-    public function isExpired(string $key, bool $eraseExpired = true): bool
+    public function isExpired($key, $eraseExpired = true)
     {
         if ($eraseExpired)
             $this->eraseExpired();
@@ -283,9 +287,9 @@ class Cache {
      * @param bool $eraseExpired if true, expired data will
      * be cleared before running this function
      * @return bool
-     * @throws Exception if the file cannot be saved
+     * @throws \Exception if the file cannot be saved
      */
-    public function isCached($key, bool $eraseExpired = true): bool
+    public function isCached($key, $eraseExpired = true)
     {
         if ($eraseExpired)
             $this->eraseExpired();
@@ -299,7 +303,7 @@ class Cache {
      * @param $expiration int number of seconds after the timestamp expires
      * @return bool true if the timestamp expired, false otherwise
      */
-    private function isTimestampExpired(int $timestamp, int $expiration): bool
+    private function isTimestampExpired($timestamp, $expiration)
     {
         $timeDiff = time() - $timestamp;
         return $timeDiff >= $expiration;
@@ -308,7 +312,7 @@ class Cache {
     /**
      * Prints cache file using var_dump, useful for debugging
      */
-    public function debugCache(): void
+    public function debugCache()
     {
         if (file_exists($this->getCacheFilePath()))
             var_dump(unserialize($this->stripFirstLine(file_get_contents($this->getCacheFilePath()))));
@@ -317,9 +321,9 @@ class Cache {
     /**
      * Reloads cache from disc. Can be used after changing file name, extension or cache dir
      * using functions instead of constructor. (This class loads data once, when is created)
-     * @throws Exception if there is a problem loading the cache
+     * @throws \Exception if there is a problem loading the cache
      */
-    public function reloadFromDisc(): void
+    public function reloadFromDisc()
     {
         // Try to load the cache, otherwise create an empty array
         $this->cacheArray = is_readable($this->getCacheFilePath()) ? $this->loadCacheFile() : [];
@@ -329,10 +333,14 @@ class Cache {
      * Returns md5 hash of the given string.
      * @param $str string String to be hashed
      * @return string MD5 hash
-     * @throws InvalidArgumentException if $str is not a string
+     * @throws \InvalidArgumentException if $str is not a string
      */
-    private function getStringHash(string $str): string
+    private function getStringHash($str)
     {
+        if (!is_string($str)) {
+            throw new \InvalidArgumentException('$key must be a string, got type "' . get_class($str) . '" instead');
+        }
+
         return md5($str);
     }
 
@@ -341,10 +349,10 @@ class Cache {
     /**
      * Strips the first line from string
      * https://stackoverflow.com/a/7740485
-     * @param string $str
+     * @param $str
      * @return bool|string stripped text without the first line or false on failure
      */
-    private function stripFirstLine(string $str): bool|string
+    private function stripFirstLine($str)
     {
         $position = strpos($str, "\n");
 
@@ -360,7 +368,7 @@ class Cache {
      * Returns cache directory
      * @return string
      */
-    public function getCacheDir(): string
+    public function getCacheDir()
     {
         return $this->cacheDir;
     }
@@ -370,10 +378,10 @@ class Cache {
      * @param string $cacheDir new cache directory. Must end with "/"
      * @return $this
      */
-    public function setCacheDir(string $cacheDir): static
+    public function setCacheDir($cacheDir)
     {
         // Add "/" to the end if it's not here
-        if (!str_ends_with($cacheDir, "/"))
+        if (substr($cacheDir, -1) !== "/")
             $cacheDir .= "/";
 
         $this->cacheDir = $cacheDir;
@@ -385,7 +393,7 @@ class Cache {
      * The new value is computed when using setCacheFilename method.
      * @return string
      */
-    public function getCacheFilenameHashed(): string
+    public function getCacheFilenameHashed()
     {
         return $this->cacheFilenameHashed;
     }
@@ -394,7 +402,7 @@ class Cache {
      * Returns cache file name
      * @return string
      */
-    public function getCacheFilename(): string
+    public function getCacheFilename()
     {
         return $this->cacheFilename;
     }
@@ -403,10 +411,14 @@ class Cache {
      * Sets new cache file name. If you want to read data from new file, consider calling reloadFromDisc.
      * @param string $cacheFilename
      * @return $this
-     * @throws InvalidArgumentException if $cacheFilename is not a string
+     * @throws \InvalidArgumentException if $cacheFilename is not a string
      */
-    public function setCacheFilename(string $cacheFilename): static
+    public function setCacheFilename($cacheFilename)
     {
+        if (!is_string($cacheFilename)) {
+            throw new \InvalidArgumentException('$key must be a string, got type "' . get_class($cacheFilename) . '" instead');
+        }
+
         $this->cacheFilename = $cacheFilename;
         $this->cacheFilenameHashed = $this->getStringHash($cacheFilename);
         return $this;
@@ -416,7 +428,7 @@ class Cache {
      * Returns cache file extension
      * @return string
      */
-    public function getCacheFileExtension(): string
+    public function getCacheFileExtension()
     {
         return $this->cacheFileExtension;
     }
@@ -426,10 +438,10 @@ class Cache {
      * @param string $cacheFileExtension new cache file extension. Must end with ".php"
      * @return $this
      */
-    public function setCacheFileExtension(string $cacheFileExtension): static
+    public function setCacheFileExtension($cacheFileExtension)
     {
         // Add ".php" to the end if it's not here
-        if (!str_ends_with($cacheFileExtension, ".php"))
+        if (substr($cacheFileExtension, -4) !== ".php")
             $cacheFileExtension .= ".php";
 
         $this->cacheFileExtension = $cacheFileExtension;
@@ -440,7 +452,7 @@ class Cache {
      * Combines directory, filename and extension into a path
      * @return string
      */
-    public function getCacheFilePath(): string
+    public function getCacheFilePath()
     {
         return $this->getCacheDir() . $this->getCacheFilenameHashed() . $this->getCacheFileExtension();
     }
@@ -449,7 +461,7 @@ class Cache {
      * Returns raw cache array
      * @return array
      */
-    public function getCacheArray(): array
+    public function getCacheArray()
     {
         return $this->cacheArray;
     }
@@ -459,7 +471,7 @@ class Cache {
      * If dev mode is on, cache expire after one second
      * @return bool
      */
-    public function isDevMode(): bool
+    public function isDevMode()
     {
         return $this->devMode;
     }
@@ -470,7 +482,7 @@ class Cache {
      * @param $devMode
      * @return $this
      */
-    public function setDevMode($devMode): static
+    public function setDevMode($devMode)
     {
         $this->devMode = $devMode;
         return $this;
