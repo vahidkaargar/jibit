@@ -1,15 +1,17 @@
 # Jibit gateway
 Jibit gateway php composer package
 
-### Compability
+### Compatibility
 ``php 7.4 and up``
 
 ### Installation
-```composer require vahidkaargar/jibit```
+```
+composer require vahidkaargar/jibit
+```
 
 ### Request to payment
 ```php
-use vahidkaargar/jibit;
+use vahidkaargar\jibit;
 
 $jibit = new Jibit("API_KEY", "API_SECRET");
 
@@ -17,7 +19,7 @@ $request = $jibit->paymentRequest('AMOUNT_RIAL', 'YOUR_INVOICE_ID', 'MOBILE_NUMB
 
 if (!empty($request['pspSwitchingUrl'])) {
     // successful result and redirect to PG
-    header('Location: ' . $requestResult['pspSwitchingUrl']);
+    header('Location: ' . $request['pspSwitchingUrl']);
 }
 if (!empty($request['errors'])) {
     // fail result and show the error
@@ -27,7 +29,7 @@ if (!empty($request['errors'])) {
 
 ### Verify payment
 ```php
-use vahidkaargar/jibit;
+use vahidkaargar\jibit;
 
 if (empty($_POST['amount']) || empty($_POST['purchaseId']) || empty($_POST['status'])) {
     echo 'No data found.';
@@ -36,22 +38,22 @@ if (empty($_POST['amount']) || empty($_POST['purchaseId']) || empty($_POST['stat
     $amount = $_POST['amount'];
     $refNum = $_POST['purchaseId'];
     $state = $_POST['status'];
-    
+
     $jibit = new Jibit("API_KEY", "API_SECRET");
-    
+
     // Making payment verify
     $request = $jibit->paymentVerify($refNum);
     if (!empty($request['status']) && $request['status'] === 'SUCCESSFUL') {
         //successful result
         echo 'Successful! refNum:' . $refNum;
-    
+
         //show session detail
         $order = $jibit->getOrderById($refNum);
-        if (!empty($order['elements'][0]['pspMaskedCardNumber'])){
-            echo 'payer card pan mask: ' .$order['elements'][0]['pspMaskedCardNumber'];
+        if (!empty($order['elements'][0]['pspMaskedCardNumber'])) {
+            echo 'payer card pan mask: ' . $order['elements'][0]['pspMaskedCardNumber'];
         }
-    }else{
-        echo 'Verifying payment has been failed!'
+    } else {
+        echo 'Verifying payment has been failed!';
     }
 }
 ```
