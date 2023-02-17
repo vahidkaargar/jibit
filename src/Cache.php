@@ -54,7 +54,7 @@ class Cache
      * @param string $cacheFileExtension cache file extension. Must end with .php
      * @throws \Exception if there is a problem loading the cache
      */
-    public function __construct($cacheDirPath = "cache/", $cacheFileName = "default.cache", $cacheFileExtension = ".cache.php")
+    public function __construct($cacheDirPath = __DIR__ . "/cache/", $cacheFileName = "default.cache", $cacheFileExtension = ".cache.php")
     {
         $this->setCacheFilename($cacheFileName);
         $this->setCacheDir($cacheDirPath);
